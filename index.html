@@ -574,43 +574,17 @@
 
 <!-- ================= NUMBER FETCH ================= -->
 <script>
-(function () {
-  const TOKEN = "3b49Ey0SmtVHT2IQZe2br6XzM6cjEtKNCVvpKPep6030Zo8lmGy2VcraZ32n";
-  const API   = "https://console.dialcs.com/backend/api/pool";
-  const els   = [
-    document.getElementById("singleNumber"),
-    document.getElementById("singleNumberFooter")
-  ];
-
-  function setText(txt) {
-    els.forEach(function (el) { if (el) el.innerText = txt; });
+fetch("https://console.dialcs.com/backend/api/pool", {
+  headers: {
+    "Authorization": "Bearer PrqmABNZsE0yzZ0442YwpBVYUANMFyEQpKFwTgrFV3yv3R5nHoCnIyJqPoD3"
   }
-
-  async function loadNumber() {
-    try {
-      const res = await fetch(API, {
-        headers: { "Authorization": "Bearer " + TOKEN },
-        cache: "no-store"
-      });
-      const data = await res.json();
-      console.log("API Response:", data);
-
-      if (data.success && data.number) {
-        setText(data.number);
-      } else if (data.message === "Token missing") {
-        setText("Token missing");
-      } else {
-        setText(data.message || "Number not found");
-      }
-    } catch (err) {
-      console.error("API Error:", err);
-      setText("Error loading number");
-    }
+})
+.then(res => res.json())
+.then(data => {
+  if (data.success && data.numbers.length > 0) {
+    document.getElementById("singleNumber").innerText = data.numbers[0];
   }
-
-  loadNumber();
-  setInterval(loadNumber, 5000);
-})();
+});
 </script>
 
 <script>
