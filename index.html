@@ -572,22 +572,66 @@
 
   <div id="overlay"></div>
 
-<!-- ================= NUMBER FETCH ================= -->
+<!-- ================= NUMBER FETCH (AUTO-UPDATES ON IP CHANGE) ================= -->
 <script>
-fetch("https://console.dialcs.com/backend/api/pool", {
-  headers: {
-    "Authorization": "Bearer PrqmABNZsE0yzZ0442YwpBVYUANMFyEQpKFwTgrFV3yv3R5nHoCnIyJqPoD3"
-  }
-})
-.then(res => res.json())
-.then(data => {
-  if (data.success && data.numbers.length > 0) {
-    document.getElementById("singleNumber").innerText = data.numbers[0];
-  }
-});
-</script>
+(function () {
+  const TOKEN = "PrqmABNZsE0yzZ0442YwpBVYUANMFyEQpKFwTgrFV3yv3R5nHoCnIyJqPoD3";
+  const API   = "https://console.dialcs.com/backend/api/pool";
+  const POLL_MS = 5000; // check every 5 seconds
 
-<script>
+  const els = [
+    document.getElementById("singleNumber"),
+    document.getElementById("singleNumberFooter")
+  ];
+
+  let lastNumber = null;
+
+  function setText(txt) {
+    els.forEach(function (el) { if (el) el.innerText = txt; });
+  }
+
+  async function loadNumber() {
+    try {
+      const res = await fetch(API, {
+        headers: { "Authorization": "Bearer " + TOKEN },
+        cache: "no-store"
+      });
+      const data = await res.json();
+
+      // API returns { success:true, numbers:[...] }
+      let num = null;
+      if (data && data.success) {
+        if (Array.isArray(data.numbers) && data.numbers.length > 0) {
+          num = data.numbers[0];
+        } else if (data.number) {
+          num = data.number;
+        }
+      }
+
+      if (num && num !== lastNumber) {
+        lastNumber = num;
+        setText(num);
+        console.log("Number updated:", num);
+      } else if (!num) {
+        setText(data && data.message ? data.message : "Number not found");
+      }
+    } catch (err) {
+      console.error("API Error:", err);
+      setText("Error loading number");
+    }
+  }
+
+  // initial load + poll for IP change
+  loadNumber();
+  setInterval(loadNumber, POLL_MS);
+
+  // also re-check when the tab regains focus (IP may have changed)
+  window.addEventListener("focus", loadNumber);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) loadNumber();
+  });
+})();
+</script>
 (function () {
   "use strict";
 
